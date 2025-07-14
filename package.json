@@ -1,0 +1,51 @@
+{
+  "name": "ico-mcp-service",
+  "version": "1.0.0",
+  "description": "ICO Database Query MCP Service",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "start:api": "node dist/api/server.js",
+    "start:mcp-http": "node dist/mcp/http-server.js",
+    "start:mcp-stdio": "node dist/mcp/simple-stdio-server.js",
+    "dev": "ts-node src/index.ts",
+    "dev:api": "ts-node src/api/server.ts",
+    "dev:mcp-http": "ts-node src/mcp/http-server.ts",
+    "dev:mcp-stdio": "ts-node src/mcp/simple-stdio-server.ts",
+    "download-data": "ts-node scripts/download-data.ts",
+    "setup-db": "node dist/scripts/setup-db.js",
+    "cron-update": "ts-node scripts/cron-update.ts",
+    "test": "jest",
+    "lint": "eslint src/**/*.ts",
+    "clean": "rm -rf dist"
+  },
+  "keywords": ["mcp", "ico", "mcp-server"],
+  "author": "DarkhorseOne Ltd",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.4.0",
+    "express": "^4.18.2",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.6",
+    "csv-parser": "^3.0.0",
+    "cors": "^2.8.5",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.0",
+    "@types/cors": "^2.8.17",
+    "typescript": "^5.3.0",
+    "ts-node": "^10.9.0",
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.8",
+    "eslint": "^8.54.0",
+    "@typescript-eslint/eslint-plugin": "^6.12.0",
+    "@typescript-eslint/parser": "^6.12.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
