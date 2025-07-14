@@ -51,6 +51,18 @@ export class SimpleStdioMcpServer {
       };
     }
 
+    // Handle notifications (messages without id)
+    if (typeof message.id === 'undefined') {
+      switch (message.method) {
+        case 'notifications/initialized':
+          // Notification - no response needed
+          return null;
+        default:
+          // Unknown notification - no response needed
+          return null;
+      }
+    }
+
     try {
       switch (message.method) {
         case 'initialize':
@@ -106,6 +118,20 @@ export class SimpleStdioMcpServer {
             }
           };
 
+        case 'resources/list':
+          return {
+            jsonrpc: "2.0",
+            id: message.id,
+            result: { resources: [] }
+          };
+
+        case 'prompts/list':
+          return {
+            jsonrpc: "2.0",
+            id: message.id,
+            result: { prompts: [] }
+          };
+
         default:
           return {
             jsonrpc: "2.0",
@@ -142,7 +168,10 @@ export class SimpleStdioMcpServer {
           try {
             const message = JSON.parse(line);
             const response = await this.processMessage(message);
-            process.stdout.write(JSON.stringify(response) + '\n');
+            // Only send response if it's not null (notifications don't need responses)
+            if (response !== null) {
+              process.stdout.write(JSON.stringify(response) + '\n');
+            }
           } catch (error) {
             stdioLogger.error('Error processing message:', error);
           }
