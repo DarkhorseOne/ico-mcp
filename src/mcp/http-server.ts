@@ -24,9 +24,9 @@ export class HttpMcpServer {
   }
 
   private setupRoutes() {
-    this.app.post('/mcp/initialize', this.handleInitialize.bind(this));
-    this.app.post('/mcp/tools/list', this.handleToolsList.bind(this));
-    this.app.post('/mcp/tools/call', this.handleToolCall.bind(this));
+    this.app.post('/initialize', this.handleInitialize.bind(this));
+    this.app.post('/tools/list', this.handleToolsList.bind(this));
+    this.app.post('/tools/call', this.handleToolCall.bind(this));
   }
 
   private async handleInitialize(req: express.Request, res: express.Response) {
