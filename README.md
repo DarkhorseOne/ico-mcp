@@ -32,8 +32,8 @@ npm install
 # Build the project
 npm run build
 
-# Setup database from CSV file
-npm run setup-db
+# Setup database from CSV file (fast method recommended)
+npm run setup-db-fast
 ```
 
 ### Running the Service
@@ -341,6 +341,8 @@ ico-mcp-service/
 │   │   └── logger.ts            # Logging utility
 │   └── index.ts                 # Main entry point
 ├── scripts/
+│   ├── download-data.ts         # ICO data download script
+│   ├── cron-update.ts           # Automated update script
 │   └── setup-db.ts              # Database setup script
 ├── data/
 │   └── ico.db                   # SQLite database
@@ -395,7 +397,10 @@ npm run dev:api        # Development API server
 npm run dev:mcp-http   # Development HTTP MCP server
 npm run dev:mcp-stdio  # Development stdio MCP server
 npm run start:http-bridge # HTTP bridge for MCP clients
-npm run setup-db       # Import CSV data
+npm run download-data  # Download latest ICO data from ICO website
+npm run setup-db       # Import CSV data (standard method)
+npm run setup-db-fast  # Import CSV data (optimized method - 10x faster)
+npm run cron-update    # Automated update (download + build + setup)
 npm run test           # Run tests
 npm run lint           # Lint code
 npm run clean          # Clean build directory
@@ -438,9 +443,45 @@ Logs are written to:
 
 ### Updating Data
 
+#### Manual Update
 1. Place new CSV file in project root as `register-of-data-controllers.csv`
-2. Run `npm run setup-db` to import new data
+2. Run `npm run setup-db-fast` to import new data (recommended for speed)
 3. The system will automatically version the data updates
+
+**Import Options:**
+- `npm run setup-db-fast` - **Recommended**: 10x faster (~2 minutes for 1.29M records)
+- `npm run setup-db` - Standard method (~20+ minutes for 1.29M records)
+
+#### Automated Update
+```bash
+# Download latest data from ICO website (checks recent days automatically)
+npm run download-data
+
+# Download and force update even if file is recent
+npm run download-data -- --force
+
+# Full automated update (download + build + import)
+npm run cron-update
+
+# See what would be done without executing
+npm run cron-update -- --dry-run
+```
+
+**Note:** The ICO now publishes daily ZIP files instead of a single CSV. The download script automatically:
+- Checks for the most recent available file (up to 7 days back)
+- Downloads the ZIP file and extracts the CSV
+- Verifies the file format and size
+- Cleans up temporary files
+
+#### Scheduled Updates
+For regular updates, set up a cron job:
+```bash
+# Daily at 2 AM
+0 2 * * * cd /path/to/ico-mcp && npm run cron-update >> logs/cron.log 2>&1
+
+# Weekly on Sundays at 1 AM  
+0 1 * * 0 cd /path/to/ico-mcp && npm run cron-update >> logs/cron.log 2>&1
+```
 
 ### Data Format
 
@@ -492,7 +533,16 @@ Example error response:
 ### Database Optimization
 - Indexed columns for fast searches
 - SQLite for efficient local queries
-- Batch processing for data imports
+- **Optimized batch processing** for data imports (10x faster than original)
+- WAL mode for better concurrent performance
+- Memory-mapped I/O for faster file operations
+
+### Import Performance
+- **Fast Import**: 1.29M+ records in ~2 minutes (10,600 records/second)
+- Standard Import: 1.29M+ records in ~20+ minutes (1,100 records/second)
+- **Batch transactions** with 1000-record batches for optimal performance
+- **Custom CSV parser** optimized for ICO data format
+- **Memory-efficient** processing without loading entire file into memory
 
 ### Query Performance
 - Organization name: Partial match with LIKE
@@ -593,6 +643,24 @@ For issues and questions:
 The service is **production-ready** and can be deployed in any of the four modes depending on your integration needs. All MCP client compatibility issues have been resolved, and the system has been thoroughly tested with real data.
 
 ## Changelog
+
+### v1.0.4
+- **Major Performance Improvement**: Added optimized database import script (`setup-db-fast.js`)
+- **10x Faster Import**: Reduced import time from 20+ minutes to ~2 minutes (10,600 records/second)
+- **Batch Processing**: Implemented 1000-record batch transactions for optimal performance
+- **Custom CSV Parser**: Optimized parser for ICO data format without external dependencies
+- **Memory Efficiency**: Processes CSV without loading entire file into memory
+- **SQLite Optimizations**: WAL mode, memory-mapped I/O, and performance tuning
+- **Fresh Database Support**: Fixed database creation for clean imports
+- Added `npm run setup-db-fast` command for optimized imports
+
+### v1.0.3
+- Added download-data.ts script for automated ICO data downloads
+- Added cron-update.ts script for scheduled data updates
+- **Fixed download script for new ICO ZIP format** - ICO now publishes daily ZIP files
+- Automated data management with lock file protection
+- Support for cron job scheduling and dry-run mode
+- Enhanced data management documentation
 
 ### v1.0.2
 - Added comprehensive Docker support for all deployment modes

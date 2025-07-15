@@ -16,6 +16,7 @@
     "dev:mcp-stdio": "ts-node src/mcp/simple-stdio-server.ts",
     "download-data": "ts-node scripts/download-data.ts",
     "setup-db": "node dist/scripts/setup-db.js",
+    "setup-db-fast": "node dist/scripts/setup-db-fast.js",
     "cron-update": "ts-node scripts/cron-update.ts",
     "test": "jest",
     "lint": "eslint src/**/*.ts",
