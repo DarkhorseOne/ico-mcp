@@ -224,6 +224,101 @@ npm run start:http-bridge
 - **HTTP MCP**: Network-accessible MCP server, microservices architecture
 - **HTTP Bridge**: Legacy MCP clients that need HTTP backend, development/testing
 
+## Docker Deployment
+
+### Quick Start with Docker
+
+1. **Setup Environment:**
+   ```bash
+   # Copy environment template
+   cp .env.example .env
+   
+   # Edit configuration as needed
+   nano .env
+   ```
+
+2. **Build and Setup Database:**
+   ```bash
+   # Build Docker image
+   docker build -t ico-mcp-server .
+   
+   # Setup database from CSV
+   docker-compose --profile setup up ico-setup
+   ```
+
+3. **Deploy Services:**
+   ```bash
+   # HTTP MCP Server (port 3001)
+   docker-compose --profile http up -d ico-mcp-http
+   
+   # REST API Server (port 3000)
+   docker-compose --profile api up -d ico-api
+   
+   # HTTP Bridge (connects to HTTP MCP server)
+   docker-compose --profile bridge up -d ico-bridge
+   
+   # Stdio MCP Server (default)
+   docker-compose up -d ico-mcp-stdio
+   ```
+
+### Management Scripts
+
+Use the provided control script for easy management:
+
+```bash
+# Start HTTP MCP server
+./mcp-http-control.sh start
+
+# Check status
+./mcp-http-control.sh status
+
+# View logs
+./mcp-http-control.sh logs
+
+# Stop server
+./mcp-http-control.sh stop
+```
+
+### Docker Services
+
+| Service | Description | Port | Profile |
+|---------|-------------|------|---------|
+| `ico-mcp-stdio` | Stdio MCP server | - | default |
+| `ico-mcp-http` | HTTP MCP server | 3001 | http |
+| `ico-api` | REST API server | 3000 | api |
+| `ico-bridge` | HTTP bridge | - | bridge |
+| `ico-setup` | Database setup | - | setup |
+
+### Environment Variables
+
+Configure via `.env` file:
+
+```bash
+# Server ports
+MCP_HTTP_PORT=3001
+API_PORT=3000
+
+# Logging
+LOG_LEVEL=info
+
+# Database
+DB_PATH=/app/data/ico.db
+
+# HTTP Bridge
+MCP_HTTP_SERVER_URL=http://ico-mcp-http:3001
+MCP_RECONNECT_DELAY=2000
+MCP_MAX_RETRY_ATTEMPTS=3
+```
+
+### Testing Docker Deployment
+
+Run the comprehensive test suite:
+
+```bash
+# Test all deployment modes
+./test-docker.sh
+```
+
 ## Project Structure
 
 ```
@@ -251,6 +346,11 @@ ico-mcp-service/
 │   └── ico.db                   # SQLite database
 ├── logs/                        # Application logs
 ├── simple-http-bridge.js        # HTTP bridge for MCP clients
+├── Dockerfile                   # Docker container definition
+├── docker-compose.yml           # Docker services configuration
+├── mcp-http-control.sh          # HTTP server control script
+├── test-docker.sh               # Docker deployment test script
+├── .env.example                 # Environment variables template
 ├── package.json
 ├── tsconfig.json
 └── README.md
@@ -493,6 +593,14 @@ For issues and questions:
 The service is **production-ready** and can be deployed in any of the four modes depending on your integration needs. All MCP client compatibility issues have been resolved, and the system has been thoroughly tested with real data.
 
 ## Changelog
+
+### v1.0.2
+- Added comprehensive Docker support for all deployment modes
+- Docker services: stdio, http, api, bridge, and setup
+- Added mcp-http-control.sh for easy HTTP server management
+- Added test-docker.sh for deployment testing
+- Multi-stage Docker build for production optimization
+- Environment-based configuration support
 
 ### v1.0.1
 - Simplified HTTP MCP endpoints (removed `/mcp` prefix)
