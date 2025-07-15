@@ -14,7 +14,7 @@
     "dev:api": "ts-node src/api/server.ts",
     "dev:mcp-http": "ts-node src/mcp/http-server.ts",
     "dev:mcp-stdio": "ts-node src/mcp/simple-stdio-server.ts",
-    "download-data": "ts-node scripts/download-data.ts",
+    "download-data": "./download-ico-data.sh",
     "setup-db": "node dist/scripts/setup-db.js",
     "setup-db-fast": "node dist/scripts/setup-db-fast.js",
     "cron-update": "ts-node scripts/cron-update.ts",

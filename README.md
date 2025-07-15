@@ -341,9 +341,10 @@ ico-mcp-service/
 │   │   └── logger.ts            # Logging utility
 │   └── index.ts                 # Main entry point
 ├── scripts/
-│   ├── download-data.ts         # ICO data download script
+│   ├── download-data.ts         # ICO data download script (legacy)
 │   ├── cron-update.ts           # Automated update script
 │   └── setup-db.ts              # Database setup script
+├── download-ico-data.sh         # Shell script for downloading ICO data (recommended)
 ├── data/
 │   └── ico.db                   # SQLite database
 ├── logs/                        # Application logs
@@ -397,7 +398,7 @@ npm run dev:api        # Development API server
 npm run dev:mcp-http   # Development HTTP MCP server
 npm run dev:mcp-stdio  # Development stdio MCP server
 npm run start:http-bridge # HTTP bridge for MCP clients
-npm run download-data  # Download latest ICO data from ICO website
+npm run download-data  # Download latest ICO data from ICO website (shell script)
 npm run setup-db       # Import CSV data (standard method)
 npm run setup-db-fast  # Import CSV data (optimized method - 10x faster)
 npm run cron-update    # Automated update (download + build + setup)
@@ -458,7 +459,7 @@ Logs are written to:
 npm run download-data
 
 # Download and force update even if file is recent
-npm run download-data -- --force
+./download-ico-data.sh --force
 
 # Full automated update (download + build + import)
 npm run cron-update
@@ -467,11 +468,12 @@ npm run cron-update
 npm run cron-update -- --dry-run
 ```
 
-**Note:** The ICO now publishes daily ZIP files instead of a single CSV. The download script automatically:
+**Note:** The ICO now publishes daily ZIP files instead of a single CSV. The download script (`download-ico-data.sh`) automatically:
 - Checks for the most recent available file (up to 7 days back)
-- Downloads the ZIP file and extracts the CSV
+- Downloads the ZIP file and extracts the CSV (handles directory structures)
 - Verifies the file format and size
 - Cleans up temporary files
+- Works on both macOS and Linux (including Amazon Linux 2023)
 
 #### Scheduled Updates
 For regular updates, set up a cron job:

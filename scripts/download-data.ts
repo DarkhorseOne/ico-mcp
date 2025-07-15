@@ -36,21 +36,60 @@ async function extractZipFile(zipPath: string, outputDir: string): Promise<strin
   try {
     // Try to extract using unzip command (available on most systems)
     const { stdout } = await execAsync(`unzip -l "${zipPath}"`);
+    logger.info(`ZIP contents:\n${stdout}`);
     
     // Find the CSV file in the zip listing
     // The output format is: "   size  date time   filename"
+    // Handle both files and directories with CSV files
     const csvMatch = stdout.match(/\s+\d+\s+\d{2}-\d{2}-\d{4}\s+\d{2}:\d{2}\s+(.+\.csv)\s*$/m);
     if (!csvMatch) {
       throw new Error('No CSV file found in ZIP archive');
     }
     
-    const csvFileName = csvMatch[1];
-    logger.info(`Found CSV file in ZIP: ${csvFileName}`);
+    const csvFilePath = csvMatch[1];
+    logger.info(`Found CSV file in ZIP: ${csvFilePath}`);
     
-    // Extract the CSV file
+    // Extract the entire ZIP file
     await execAsync(`unzip -o "${zipPath}" -d "${outputDir}"`);
     
-    return path.join(outputDir, csvFileName);
+    // The CSV file might be in a subdirectory, so we need to find it
+    const extractedCsvPath = path.join(outputDir, csvFilePath);
+    
+    // Check if the file exists at the expected location
+    if (fs.existsSync(extractedCsvPath)) {
+      return extractedCsvPath;
+    }
+    
+    // If not found, search for any CSV file in the extracted directory
+    const findCsvFiles = (dir: string): string[] => {
+      const files: string[] = [];
+      const items = fs.readdirSync(dir);
+      
+      for (const item of items) {
+        const fullPath = path.join(dir, item);
+        const stat = fs.statSync(fullPath);
+        
+        if (stat.isDirectory()) {
+          files.push(...findCsvFiles(fullPath));
+        } else if (item.endsWith('.csv')) {
+          files.push(fullPath);
+        }
+      }
+      
+      return files;
+    };
+    
+    const csvFiles = findCsvFiles(outputDir);
+    if (csvFiles.length === 0) {
+      throw new Error('No CSV file found in extracted ZIP contents');
+    }
+    
+    if (csvFiles.length > 1) {
+      logger.warn(`Multiple CSV files found: ${csvFiles.join(', ')}. Using the first one.`);
+    }
+    
+    return csvFiles[0];
+    
   } catch (error) {
     logger.error('Failed to extract ZIP file:', error);
     throw new Error('ZIP extraction failed. Please install unzip utility.');
