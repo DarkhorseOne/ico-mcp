@@ -79,6 +79,12 @@ extract_csv_from_zip() {
     
     log_info "Found CSV file: $(basename "$csv_file")"
     
+    # Check if target exists as directory and remove it (fixes Docker volume mount issue)
+    if [[ -d "$output_file" ]]; then
+        log_warn "Target '$output_file' exists as a directory. Removing it..."
+        rm -rf "$output_file"
+    fi
+
     # Move CSV file to target location
     if mv "$csv_file" "$output_file"; then
         log_info "CSV file extracted to: $output_file"
