@@ -2,7 +2,6 @@
 
 import fs from 'fs';
 import path from 'path';
-import readline from 'readline';
 import { createHash } from 'crypto';
 import { Database } from 'sqlite3';
 import { logger } from '../utils/logger';
@@ -42,16 +41,6 @@ function parseCSVLine(line: string): string[] {
   return result;
 }
 
-// Helper to run DB commands as promises
-const runAsync = (db: Database, sql: string, params: any[] = []): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, (err) => {
-      if (err) reject(err);
-      else resolve();
-    });
-  });
-};
-
 // Get absolute paths relative to project root
 const projectRoot = path.resolve(__dirname, '../..');
 const CSV_FILE_PATH = path.join(projectRoot, 'register-of-data-controllers.csv');
@@ -61,7 +50,7 @@ async function setupDatabaseFast() {
   const startTime = Date.now();
   
   try {
-    logger.info('Starting FAST (Async Stream) database setup...');
+    logger.info('Starting FAST database setup...');
     
     // Check if CSV file exists
     if (!fs.existsSync(CSV_FILE_PATH)) {
@@ -92,14 +81,6 @@ async function setupDatabaseFast() {
     // Create database tables if they don't exist
     await new Promise<void>((resolve, reject) => {
       db.serialize(() => {
-        // Performance optimizations for bulk loading
-        db.run('PRAGMA journal_mode = WAL'); 
-        db.run('PRAGMA synchronous = NORMAL'); 
-        db.run('PRAGMA cache_size = 100000'); 
-        db.run('PRAGMA temp_store = MEMORY');
-        
-        logger.info('Database performance optimizations applied (TURBO mode)');
-
         // Create tables
         const createIcoTableQuery = `
           CREATE TABLE IF NOT EXISTS ico_registrations (
@@ -149,6 +130,24 @@ async function setupDatabaseFast() {
         db.run(createVersionTableQuery);
         logger.info('Database tables created/verified');
         
+        // Create indexes
+        db.run('CREATE INDEX IF NOT EXISTS idx_organisation_name ON ico_registrations(organisation_name)');
+        db.run('CREATE INDEX IF NOT EXISTS idx_registration_number ON ico_registrations(registration_number)');
+        db.run('CREATE INDEX IF NOT EXISTS idx_postcode ON ico_registrations(organisation_postcode)');
+        db.run('CREATE INDEX IF NOT EXISTS idx_end_date ON ico_registrations(end_date_of_registration)');
+        db.run('CREATE INDEX IF NOT EXISTS idx_download_date ON data_versions(download_date)');
+        db.run('CREATE INDEX IF NOT EXISTS idx_sha256 ON data_versions(file_sha256)');
+        db.run('CREATE INDEX IF NOT EXISTS idx_status ON data_versions(status)');
+        logger.info('Database indexes created/verified');
+        
+        // Performance optimizations
+        db.run('PRAGMA journal_mode = WAL');
+        db.run('PRAGMA synchronous = NORMAL');
+        db.run('PRAGMA cache_size = 10000');
+        db.run('PRAGMA temp_store = MEMORY');
+        db.run('PRAGMA mmap_size = 268435456'); // 256MB
+        logger.info('Database performance optimizations applied');
+        
         // Clear existing data
         db.run('DELETE FROM ico_registrations', (err) => {
           if (err) reject(err);
@@ -159,6 +158,24 @@ async function setupDatabaseFast() {
         });
       });
     });
+    
+    // Read and parse CSV file line by line
+    const fileContent = fs.readFileSync(CSV_FILE_PATH, 'utf8');
+    const lines = fileContent.split('\n');
+    
+    if (lines.length === 0) {
+      throw new Error('CSV file is empty');
+    }
+    
+    // Parse header to get column indices
+    const headers = parseCSVLine(lines[0]);
+    const columnMap = new Map<string, number>();
+    
+    headers.forEach((header, index) => {
+      columnMap.set(header, index);
+    });
+    
+    logger.info(`Found ${headers.length} columns in CSV`);
     
     // Prepare batch insert statement
     const insertQuery = `
@@ -176,137 +193,116 @@ async function setupDatabaseFast() {
     
     const stmt = db.prepare(insertQuery);
     
-    // Process records
-    const BATCH_SIZE = 25000; 
+    // Process records in batches within a transaction
+    const BATCH_SIZE = 1000;
     let recordCount = 0;
     let batchCount = 0;
     let skippedRecords = 0;
-    let headers: string[] = [];
-    let columnMap = new Map<string, number>();
+    let batchIndex = 0;
     
-    logger.info('Starting CSV processing...');
-
-    // Start initial transaction
-    await runAsync(db, 'BEGIN TRANSACTION');
-
-    const rl = readline.createInterface({
-      input: fs.createReadStream(CSV_FILE_PATH),
-      crlfDelay: Infinity
-    });
-
-    let isHeader = true;
-
-    for await (const line of rl) {
-      if (!line.trim()) continue;
-
-      if (isHeader) {
-        headers = parseCSVLine(line);
-        headers.forEach((header, index) => {
-          columnMap.set(header, index);
+    const processRecords = async () => {
+      return new Promise<void>((resolve, reject) => {
+        db.serialize(() => {
+          db.run('BEGIN TRANSACTION');
+          
+          try {
+            // Process lines (skip header)
+            for (let i = 1; i < lines.length; i++) {
+              const line = lines[i].trim();
+              if (!line) continue;
+              
+              const values = parseCSVLine(line);
+              
+              // Extract values using column map
+              const getField = (fieldName: string) => {
+                const index = columnMap.get(fieldName);
+                return index !== undefined ? values[index] || '' : '';
+              };
+              
+              const registrationNumber = getField('Registration_number');
+              const organisationName = getField('Organisation_name');
+              
+              // Skip records without required fields
+              if (!registrationNumber || !organisationName) {
+                skippedRecords++;
+                if (skippedRecords <= 5) {
+                  logger.warn(`Skipped line ${i}: reg="${registrationNumber}", org="${organisationName}"`);
+                }
+                continue;
+              }
+              
+              // Insert record
+              stmt.run([
+                registrationNumber,
+                organisationName,
+                getField('Organisation_address_line_1'),
+                getField('Organisation_address_line_2'),
+                getField('Organisation_address_line_3'),
+                getField('Organisation_address_line_4'),
+                getField('Organisation_address_line_5'),
+                getField('Organisation_postcode'),
+                getField('Public_authority'),
+                getField('Start_date_of_registration'),
+                getField('End_date_of_registration'),
+                getField('Trading_names'),
+                getField('Payment_tier'),
+                getField('DPO_or_Person_responsible_for_DP_Title'),
+                getField('DPO_or_Person_responsible_for_DP_First_name'),
+                getField('DPO_or_Person_responsible_for_DP_Last_name'),
+                getField('DPO_or_Person_responsible_for_DP_Organisation'),
+                getField('DPO_or_Person_responsible_for_DP_Email'),
+                getField('DPO_or_Person_responsible_for_DP_Phone'),
+                getField('DPO_or_Person_responsible_for_DP_Address_line_1'),
+                getField('DPO_or_Person_responsible_for_DP_Address_line_2'),
+                getField('DPO_or_Person_responsible_for_DP_Address_line_3'),
+                getField('DPO_or_Person_responsible_for_DP_Address_line_4'),
+                getField('DPO_or_Person_responsible_for_DP_Address_line_5'),
+                getField('DPO_or_Person_responsible_for_DP_Postcode'),
+                getField('Public_register_entry_URL')
+              ]);
+              
+              recordCount++;
+              batchCount++;
+              
+              // Progress logging
+              if (recordCount % 10000 === 0) {
+                logger.info(`Processed ${recordCount} records...`);
+              }
+              
+              // Commit batch and start new transaction
+              if (batchCount >= BATCH_SIZE) {
+                db.run('COMMIT');
+                logger.info(`Committed batch of ${BATCH_SIZE} records (batch ${batchIndex})`);
+                batchIndex++;
+                db.run('BEGIN TRANSACTION');
+                batchCount = 0;
+              }
+            }
+            
+            // Commit final batch
+            db.run('COMMIT', (err) => {
+              if (err) {
+                reject(err);
+              } else {
+                logger.info(`Finished processing CSV. Total records: ${recordCount}`);
+                logger.info(`Skipped records (missing required fields): ${skippedRecords}`);
+                resolve();
+              }
+            });
+            
+          } catch (error) {
+            db.run('ROLLBACK');
+            reject(error);
+          }
         });
-        logger.info(`Found ${headers.length} columns in CSV`);
-        isHeader = false;
-        continue;
-      }
-
-      const values = parseCSVLine(line);
-      
-      // Extract values using column map
-      const getField = (fieldName: string) => {
-        const index = columnMap.get(fieldName);
-        return index !== undefined ? values[index] || '' : '';
-      };
-      
-      const registrationNumber = getField('Registration_number');
-      const organisationName = getField('Organisation_name');
-      
-      // Skip records without required fields
-      if (!registrationNumber || !organisationName) {
-        skippedRecords++;
-        if (skippedRecords <= 5) {
-          logger.warn(`Skipped line: reg="${registrationNumber}", org="${organisationName}"`);
-        }
-        continue;
-      }
-      
-      // Insert record
-      stmt.run([
-        registrationNumber,
-        organisationName,
-        getField('Organisation_address_line_1'),
-        getField('Organisation_address_line_2'),
-        getField('Organisation_address_line_3'),
-        getField('Organisation_address_line_4'),
-        getField('Organisation_address_line_5'),
-        getField('Organisation_postcode'),
-        getField('Public_authority'),
-        getField('Start_date_of_registration'),
-        getField('End_date_of_registration'),
-        getField('Trading_names'),
-        getField('Payment_tier'),
-        getField('DPO_or_Person_responsible_for_DP_Title'),
-        getField('DPO_or_Person_responsible_for_DP_First_name'),
-        getField('DPO_or_Person_responsible_for_DP_Last_name'),
-        getField('DPO_or_Person_responsible_for_DP_Organisation'),
-        getField('DPO_or_Person_responsible_for_DP_Email'),
-        getField('DPO_or_Person_responsible_for_DP_Phone'),
-        getField('DPO_or_Person_responsible_for_DP_Address_line_1'),
-        getField('DPO_or_Person_responsible_for_DP_Address_line_2'),
-        getField('DPO_or_Person_responsible_for_DP_Address_line_3'),
-        getField('DPO_or_Person_responsible_for_DP_Address_line_4'),
-        getField('DPO_or_Person_responsible_for_DP_Address_line_5'),
-        getField('DPO_or_Person_responsible_for_DP_Postcode'),
-        getField('Public_register_entry_URL')
-      ], (err) => {
-        if (err) {
-          logger.error(`Insert failed for ${registrationNumber}:`, err);
-        }
       });
-      
-      recordCount++;
-      batchCount++;
-      
-      // Commit batch and start new transaction periodically
-      if (batchCount >= BATCH_SIZE) {
-        await runAsync(db, 'COMMIT');
-        await runAsync(db, 'BEGIN TRANSACTION');
-        
-        batchCount = 0;
-        logger.info(`Processed ${recordCount} records...`);
-      }
-    }
+    };
     
-    // Final commit for remaining records
-    await runAsync(db, 'COMMIT');
+    await processRecords();
     
     // Clean up prepared statement
     stmt.finalize();
-    
-    // Create Indexes AFTER insert
-    logger.info('Creating indexes...');
-    await new Promise<void>((resolve, reject) => {
-      db.serialize(() => {
-        db.run('CREATE INDEX IF NOT EXISTS idx_organisation_name ON ico_registrations(organisation_name)');
-        db.run('CREATE INDEX IF NOT EXISTS idx_registration_number ON ico_registrations(registration_number)');
-        db.run('CREATE INDEX IF NOT EXISTS idx_postcode ON ico_registrations(organisation_postcode)');
-        db.run('CREATE INDEX IF NOT EXISTS idx_end_date ON ico_registrations(end_date_of_registration)');
-        db.run('CREATE INDEX IF NOT EXISTS idx_download_date ON data_versions(download_date)');
-        db.run('CREATE INDEX IF NOT EXISTS idx_sha256 ON data_versions(file_sha256)');
-        db.run('CREATE INDEX IF NOT EXISTS idx_status ON data_versions(status)');
-        resolve();
-      });
-    });
-    logger.info('Indexes created successfully');
-
-    // Run ANALYZE to update statistics
-    await runAsync(db, 'ANALYZE');
-
-    // Revert safety settings
-    logger.info('Reverting PRAGMA settings and checkpointing...');
-    await runAsync(db, 'PRAGMA synchronous = NORMAL');
-    await runAsync(db, 'PRAGMA journal_mode = WAL');
-    await runAsync(db, 'PRAGMA wal_checkpoint(TRUNCATE)');
-    logger.info('WAL Checkpoint complete');
+    logger.info('Database import completed successfully');
     
     // Insert data version
     const versionQuery = `
@@ -315,7 +311,15 @@ async function setupDatabaseFast() {
     `;
     
     // Archive old versions
-    await runAsync(db, "UPDATE data_versions SET status = 'archived'");
+    await new Promise<void>((resolve, reject) => {
+      db.run("UPDATE data_versions SET status = 'archived'", (err) => {
+        if (err) reject(err);
+        else {
+          logger.info('Archived old data versions');
+          resolve();
+        }
+      });
+    });
     
     // Insert new version
     await new Promise<void>((resolve, reject) => {
@@ -326,27 +330,29 @@ async function setupDatabaseFast() {
         recordCount,
         'local-csv-file'
       ], function(err) {
-        if (err) reject(err);
-        else resolve();
+        if (err) {
+          logger.error('Error inserting data version:', err);
+          reject(err);
+        } else {
+          logger.info(`Inserted data version with ID: ${this.lastID}`);
+          resolve();
+        }
       });
     });
     
     // Close database
-    logger.info('Closing database...');
     await new Promise<void>((resolve, reject) => {
       db.close((err) => {
         if (err) reject(err);
         else resolve();
       });
     });
-    logger.info('Database closed successfully');
     
     const endTime = Date.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);
     
     logger.info(`FAST database setup completed successfully!`);
     logger.info(`Total records imported: ${recordCount}`);
-    logger.info(`Skipped records (parse error/missing fields): ${skippedRecords}`);
     logger.info(`Import time: ${duration} seconds`);
     logger.info(`Records per second: ${(recordCount / parseFloat(duration)).toFixed(0)}`);
     

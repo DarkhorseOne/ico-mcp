@@ -1,0 +1,177 @@
+name: ico-registrations
+tenant: dho
+routers:
+  - server: ico-registrations
+    prefix: /dho/ico
+    cors:
+      allowOrigins:
+        - '*'
+      allowMethods:
+        - POST
+        - PUT
+        - OPTIONS
+        - GET
+        - HEAD
+      allowHeaders:
+        - Content-Type
+        - Authorization
+        - Mcp-Session-Id
+        - mcp-protocol-version
+      exposeHeaders:
+        - Mcp-Session-Id
+        - mcp-protocol-version
+      allowCredentials: false
+servers:
+  - name: ico-registrations
+    description: UK ICO Data Controllers Register MCP Server
+    allowedTools:
+      - search_ico
+      - get_ico_registration
+      - get_ico_by_org
+      - get_ico_by_postcode
+      - get_ico_data_version
+tools:
+  - name: search_ico
+    description: Search ICO registrations by multiple criteria (name, number, postcode)
+    method: GET
+    endpoint: https://api.dho.ai/ico/search
+    headers:
+      Accept: application/json
+      Accept-Encoding: identity
+      Content-Type: application/json
+    args:
+      - name: organisationName
+        position: query
+        required: false
+        type: string
+        description: Organisation name to search for (partial match)
+        default: ''
+        items:
+          type: ''
+      - name: registrationNumber
+        position: query
+        required: false
+        type: string
+        description: Exact registration number (e.g. Z1234567)
+        default: ''
+        items:
+          type: ''
+      - name: postcode
+        position: query
+        required: false
+        type: string
+        description: Postcode (partial match)
+        default: ''
+        items:
+          type: ''
+      - name: limit
+        position: query
+        required: false
+        type: number
+        description: Maximum number of results
+        default: '20'
+        items:
+          type: ''
+      - name: offset
+        position: query
+        required: false
+        type: number
+        description: Results offset for pagination
+        default: '0'
+        items:
+          type: ''
+    requestBody: ''
+    responseBody: '{{.Response.Body}}'
+
+  - name: get_ico_registration
+    description: Get specific ICO registration details by registration number
+    method: GET
+    endpoint: >-
+      https://api.dho.ai/ico/{{.Args.registration_number}}
+    headers:
+      Accept: application/json
+      Accept-Encoding: identity
+      Content-Type: application/json
+    args:
+      - name: registration_number
+        position: path
+        required: true
+        type: string
+        description: The registration number (e.g. ZA081798)
+        default: ''
+        items:
+          type: ''
+    requestBody: ''
+    responseBody: '{{.Response.Body}}'
+
+  - name: get_ico_by_org
+    description: Search ICO registrations by organisation name
+    method: GET
+    endpoint: >-
+      https://api.dho.ai/ico/organisation/{{.Args.name}}
+    headers:
+      Accept: application/json
+      Accept-Encoding: identity
+      Content-Type: application/json
+    args:
+      - name: name
+        position: path
+        required: true
+        type: string
+        description: Organisation name
+        default: ''
+        items:
+          type: ''
+      - name: limit
+        position: query
+        required: false
+        type: number
+        description: Maximum number of results
+        default: '20'
+        items:
+          type: ''
+    requestBody: ''
+    responseBody: '{{.Response.Body}}'
+
+  - name: get_ico_by_postcode
+    description: Search ICO registrations by postcode
+    method: GET
+    endpoint: >-
+      https://api.dho.ai/ico/postcode/{{.Args.postcode}}
+    headers:
+      Accept: application/json
+      Accept-Encoding: identity
+      Content-Type: application/json
+    args:
+      - name: postcode
+        position: path
+        required: true
+        type: string
+        description: Postcode (e.g. SW1A)
+        default: ''
+        items:
+          type: ''
+      - name: limit
+        position: query
+        required: false
+        type: number
+        description: Maximum number of results
+        default: '20'
+        items:
+          type: ''
+    requestBody: ''
+    responseBody: '{{.Response.Body}}'
+
+  - name: get_ico_data_version
+    description: Get current data version and statistics
+    method: GET
+    endpoint: https://api.dho.ai/ico/meta/version
+    headers:
+      Accept: application/json
+      Accept-Encoding: identity
+      Content-Type: application/json
+    args: []
+    requestBody: ''
+    responseBody: '{{.Response.Body}}'
+prompts: []
+mcpServers: []
