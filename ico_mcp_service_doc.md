@@ -566,7 +566,7 @@ export class ApiServer {
     });
   }
 
-  async start(port: number = 3000, dbPath?: string) {
+  async start(port: number = 26002, dbPath?: string) {
     await this.db.initialize(dbPath);
     
     this.app.listen(port, () => {
@@ -1438,7 +1438,7 @@ RUN chown -R ico:nodejs /app
 USER ico
 
 # Expose ports
-EXPOSE 3000 3001
+EXPOSE 26002 3001
 
 # Default command
 CMD ["npm", "start"]
@@ -1454,7 +1454,7 @@ services:
     build: .
     container_name: ico-api-server
     ports:
-      - "3000:3000"
+      - "26002:26002"
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
@@ -1582,13 +1582,13 @@ docker-compose down
 
 ```bash
 # 搜索组织
-curl "http://localhost:3000/api/ico/search?organisationName=Microsoft&limit=5"
+curl "http://localhost:26002/api/ico/search?organisationName=Microsoft&limit=5"
 
 # 获取特定注册
-curl "http://localhost:3000/api/ico/ZA081798"
+curl "http://localhost:26002/api/ico/ZA081798"
 
 # 获取数据版本信息
-curl "http://localhost:3000/api/ico/meta/version"
+curl "http://localhost:26002/api/ico/meta/version"
 ```
 
 ### MCP客户端配置

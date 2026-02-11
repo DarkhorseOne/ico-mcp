@@ -18,7 +18,7 @@ npm run lint                     # Run ESLint on src/**/*.ts
 
 ### Development Servers
 ```bash
-npm run dev:api                  # REST API server (port 3000)
+npm run dev:api                  # REST API server (port 26002)
 npm run dev:mcp-http            # HTTP MCP server (port 3001)
 npm run dev:mcp-stdio           # Stdio MCP server
 ```
@@ -143,7 +143,7 @@ const query = `SELECT * FROM ico_registrations WHERE registration_number = '${re
 ```typescript
 import { logger } from '../utils/logger';
 
-logger.info('Server started on port 3000');
+logger.info('Server started on port 26002');
 logger.error('Database connection failed:', error);
 logger.debug('Query executed:', { query, params });
 ```
@@ -295,7 +295,7 @@ const results = await icoService.searchRegistrations(query);
 ## Environment Variables
 
 - `NODE_ENV` - Environment mode (development/production)
-- `PORT` - Server port (default: 3000 for API, 3001 for MCP HTTP)
+- `PORT` - Server port (default: 26002 for API, 3001 for MCP HTTP)
 - `DB_PATH` - Custom database path (default: project/data/ico.db)
 - `LOG_LEVEL` - Winston log level (debug/info/warn/error)
 - `MCP_HTTP_SERVER_URL` - HTTP MCP server URL for bridge mode

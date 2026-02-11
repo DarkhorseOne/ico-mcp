@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 npm run build                    # Compile TypeScript to dist/
 npm run setup-db                 # Initialize database from CSV (required first step)
-npm run dev:api                  # Start REST API server in development (port 3000)
+npm run dev:api                  # Start REST API server in development (port 26002)
 npm run dev:mcp-http            # Start HTTP MCP server in development (port 3001)
 npm run dev:mcp-stdio           # Start stdio MCP server in development
 ```
@@ -132,7 +132,7 @@ The `scripts/setup-db.ts` script:
 
 ### Environment Variables
 - `NODE_ENV` - Controls logging behavior and error verbosity
-- `PORT` - Overrides default ports (3000 for API, 3001 for HTTP MCP)
+- `PORT` - Overrides default ports (26002 for API, 3001 for HTTP MCP)
 - `DB_PATH` - Custom database location (default: absolute path to project/data/ico.db)
 - `LOG_LEVEL` - Winston log level (debug, info, warn, error)
 

@@ -57,15 +57,15 @@ RUN chown -R apiuser:nodejs /app
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-3000}/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-26002}/health || exit 1
 
 # Default configuration
-ENV PORT=3000
+ENV PORT=26002
 ENV NODE_ENV=production
 ENV DB_PATH=/app/data/ico.db
 ENV LOG_LEVEL=info
 
 # Expose port
-EXPOSE 3000
+EXPOSE 26002
 
 CMD ["./docker-start.sh"]

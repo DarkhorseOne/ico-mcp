@@ -52,7 +52,7 @@ npm run dev
 npm start
 ```
 
-The API will be available at `http://localhost:3000`
+The API will be available at `http://localhost:26002`
 
 ## API Endpoints
 
@@ -157,7 +157,7 @@ docker-compose --profile setup up ico-setup
 ### Docker Configuration
 
 The container includes:
-- REST API server on port 3000
+- REST API server on port 26002
 - Automated daily data updates (2 AM via cron)
 - Health checks every 30 seconds
 - Persistent data and logs via volumes
@@ -165,7 +165,7 @@ The container includes:
 ### Environment Variables
 
 ```bash
-PORT=3000                    # API server port
+PORT=26002                    # API server port
 NODE_ENV=production          # Environment mode
 DB_PATH=/app/data/ico.db    # Database path
 LOG_LEVEL=info              # Logging level
@@ -314,7 +314,7 @@ npm run clean          # Clean build directory
 
 ### Health Check
 ```bash
-curl http://localhost:3000/health
+curl http://localhost:26002/health
 ```
 
 ### Logs

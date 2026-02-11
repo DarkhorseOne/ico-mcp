@@ -34,7 +34,7 @@ export class ApiServer {
     });
   }
 
-  async start(port: number = 3000, dbPath?: string) {
+  async start(port: number = 26002, dbPath?: string) {
     await this.db.initialize(dbPath);
     
     this.app.listen(port, () => {
@@ -49,7 +49,7 @@ export class ApiServer {
 
 async function main() {
   const server = new ApiServer();
-  const port = parseInt(process.env.PORT || '3000');
+  const port = parseInt(process.env.PORT || '26002');
   
   try {
     await server.start(port);

@@ -54,7 +54,7 @@ cp .env.example .env
 
 Edit as needed:
 ```bash
-PORT=3000
+PORT=26002
 LOG_LEVEL=info
 DB_PATH=/app/data/ico.db
 NODE_ENV=production
@@ -84,7 +84,7 @@ Examples:
 ### Health Check
 
 ```bash
-curl http://localhost:3000/health
+curl http://localhost:26002/health
 ```
 
 ### Logs
@@ -104,7 +104,7 @@ docker exec ico-api cat /app/logs/error.log
 ### Database Stats
 
 ```bash
-curl http://localhost:3000/api/ico/meta/version
+curl http://localhost:26002/api/ico/meta/version
 ```
 
 ## Troubleshooting
@@ -119,7 +119,7 @@ docker-compose logs ico-api
 docker-compose build --no-cache
 
 # Check port availability
-lsof -i :3000
+lsof -i :26002
 ```
 
 ### Database not found
@@ -227,20 +227,20 @@ docker exec ico-api find /app/logs -name "*.log" -mtime +30 -delete
 
 ### Search by Organization
 ```bash
-curl "http://localhost:3000/api/ico/search?organisationName=NHS&limit=5"
+curl "http://localhost:26002/api/ico/search?organisationName=NHS&limit=5"
 ```
 
 ### Get Specific Registration
 ```bash
-curl "http://localhost:3000/api/ico/ZA081798"
+curl "http://localhost:26002/api/ico/ZA081798"
 ```
 
 ### Search by Postcode
 ```bash
-curl "http://localhost:3000/api/ico/postcode/SW1A?limit=10"
+curl "http://localhost:26002/api/ico/postcode/SW1A?limit=10"
 ```
 
 ### Get Version Info
 ```bash
-curl "http://localhost:3000/api/ico/meta/version"
+curl "http://localhost:26002/api/ico/meta/version"
 ```

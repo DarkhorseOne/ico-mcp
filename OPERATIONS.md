@@ -5,7 +5,7 @@
 ## 1. 系统架构
 
 ### 核心组件
-- **API Server**: Node.js/Express REST API (端口 3000)
+- **API Server**: Node.js/Express REST API (端口 26002)
 - **Database**: SQLite (单文件存储，约 400MB)
 - **Cron Job**: 内置定时任务 (每天凌晨 2:00 自动更新数据)
 - **Data Source**: ICO 官网每日发布的 CSV 数据 (~500MB)
@@ -35,7 +35,7 @@
    ```bash
    cp .env.example .env
    # 根据需要修改 .env 文件中的配置
-   # PORT=3000
+   # PORT=26002
    # LOG_LEVEL=info
    ```
 
@@ -57,7 +57,7 @@
 
 6. **验证服务**
    ```bash
-   curl http://localhost:3000/health
+   curl http://localhost:26002/health
    # 应返回 {"status":"ok","timestamp":"..."}
    ```
 
@@ -144,7 +144,7 @@ environment:
 ```
 
 **Q4: 端口冲突**
-*原因*: 3000 端口被占用。
+*原因*: 26002 端口被占用。
 *解决*: 修改 `.env` 文件中的 `PORT` 变量，重启服务。
 
 ### 重置环境

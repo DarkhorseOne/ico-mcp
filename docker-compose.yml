@@ -6,11 +6,11 @@ services:
     container_name: ico-api
     environment:
       - NODE_ENV=production
-      - PORT=${PORT:-3000}
+      - PORT=${PORT:-26002}
       - DB_PATH=/app/data/ico.db
       - LOG_LEVEL=${LOG_LEVEL:-info}
     ports:
-      - "${PORT:-3000}:${PORT:-3000}"
+      - "${PORT:-26002}:${PORT:-26002}"
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
