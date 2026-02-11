@@ -42,10 +42,13 @@ npm run setup-db-fast
 ### Running the Service
 
 ```bash
-# Development mode
+# Using the control script (Recommended)
+./api-control.sh start
+
+# Or using npm (Development)
 npm run dev
 
-# Production mode
+# Or using npm (Production)
 npm start
 ```
 
@@ -122,9 +125,27 @@ GET /health
 
 ### Quick Start with Docker
 
+The project includes a control script `api-control.sh` for easy management:
+
+```bash
+# Build Docker image
+./api-control.sh build
+
+# Initial database setup
+./api-control.sh setup
+
+# Start the service
+./api-control.sh start
+
+# Check logs
+./api-control.sh logs
+```
+
+Alternatively, you can use docker-compose directly:
+
 ```bash
 # Build image
-docker build -t ico-api .
+docker-compose build
 
 # Run with docker-compose
 docker-compose up -d
@@ -166,15 +187,20 @@ The Docker container includes a cron job that runs daily at 2 AM:
 
 ### Manual Updates
 
+You can trigger a manual update using the control script:
+
+```bash
+./api-control.sh update
+```
+
+Or using npm scripts locally:
+
 ```bash
 # Download latest data
 npm run download-data
 
 # Import into database (fast method)
 npm run setup-db-fast
-
-# Full update cycle
-npm run cron-update
 ```
 
 ### Data Update Strategy
