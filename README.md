@@ -1,16 +1,15 @@
-# ICO MCP Service
+# ICO REST API Service
 
-A comprehensive service for querying ICO (Information Commissioner's Office) registration data, providing both traditional REST API and MCP (Model Context Protocol) interfaces for AI integration.
+A REST API service for querying ICO (Information Commissioner's Office) registration data with automated daily updates.
 
 ## Features
 
 - 🔍 **Comprehensive Search** - Query ICO registrations by organization name, registration number, postcode, and more
-- 🌐 **REST API** - Traditional HTTP endpoints for programmatic access
-- 🤖 **MCP Integration** - Native support for AI tools like Claude Code
-- 🔄 **HTTP Bridge** - Connects MCP clients to HTTP MCP server via stdio
-- 📊 **SQLite Database** - Efficient local storage with full indexing
-- 📈 **Data Versioning** - Track and manage data updates
-- 🚀 **Multiple Deployment Options** - API server, HTTP MCP, stdio MCP, or HTTP bridge modes
+- 🌐 **REST API** - Clean HTTP endpoints for programmatic access
+- 🔄 **Automated Updates** - Daily scheduled downloads and imports from ICO website
+- 📊 **SQLite Database** - Efficient local storage with full indexing (1.3M+ records)
+- 📈 **Data Versioning** - Track and manage data updates with SHA256 hashing
+- 🐳 **Docker Ready** - Single container deployment with built-in cron scheduling
 
 ## Quick Start
 
@@ -18,13 +17,14 @@ A comprehensive service for querying ICO (Information Commissioner's Office) reg
 
 - Node.js 18.0.0 or higher
 - npm or yarn package manager
+- Docker (optional, for containerized deployment)
 
 ### Installation
 
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd ico-mcp-service
+cd ico-api-service
 
 # Install dependencies
 npm install
@@ -32,55 +32,69 @@ npm install
 # Build the project
 npm run build
 
-# Setup database from CSV file (fast method recommended)
+# Download latest ICO data
+npm run download-data
+
+# Setup database (fast method - ~2 minutes for 1.3M records)
 npm run setup-db-fast
 ```
 
 ### Running the Service
 
-Choose your preferred mode:
-
 ```bash
-# REST API Server (http://localhost:3000)
-npm run start:api
+# Development mode
+npm run dev
 
-# HTTP MCP Server (http://localhost:3001)
-npm run start:mcp-http
-
-# Stdio MCP Server (for direct integration)
-npm run start:mcp-stdio
-
-# HTTP Bridge (converts stdio to HTTP MCP)
-npm run start:http-bridge
+# Production mode
+npm start
 ```
 
-## API Usage
+The API will be available at `http://localhost:3000`
 
-### REST API Endpoints
+## API Endpoints
 
-#### Search Registrations
+### Search Registrations
 ```bash
 GET /api/ico/search?organisationName=Microsoft&limit=5
 ```
 
-#### Get Specific Registration
+**Query Parameters:**
+- `organisationName` - Organization name (partial match)
+- `registrationNumber` - Exact registration number
+- `postcode` - Postcode (partial match)
+- `publicAuthority` - Y/N for public authority
+- `paymentTier` - Payment tier (e.g., "Tier 1", "Tier 2")
+- `limit` - Maximum results (default: 10)
+- `offset` - Pagination offset (default: 0)
+
+### Get Specific Registration
 ```bash
 GET /api/ico/ZA081798
 ```
 
-#### Search by Organization
+### Search by Organization
 ```bash
 GET /api/ico/organisation/Microsoft?limit=10
 ```
 
-#### Search by Postcode
+### Search by Postcode
 ```bash
 GET /api/ico/postcode/SW1A?limit=10
 ```
 
-#### Get Data Version Info
+### Get Data Version Info
 ```bash
 GET /api/ico/meta/version
+```
+
+### Get All Data Versions
+```bash
+GET /api/ico/meta/versions
+```
+
+### Health Check
+```bash
+GET /health
 ```
 
 ### Example Response
@@ -104,234 +118,83 @@ GET /api/ico/meta/version
 }
 ```
 
-## MCP Integration
-
-### Configuration Options
-
-#### Option 1: Direct Stdio MCP Server
-For direct integration with MCP clients:
-
-```json
-{
-  "mcpServers": {
-    "ico": {
-      "command": "node",
-      "args": ["dist/mcp/simple-stdio-server.js"],
-      "cwd": "/path/to/ico-mcp-service"
-    }
-  }
-}
-```
-
-#### Option 2: HTTP Bridge (Recommended for HTTP MCP Server)
-For clients that need to connect to the HTTP MCP server via stdio:
-
-```json
-{
-  "mcpServers": {
-    "ico": {
-      "command": "node",
-      "args": ["simple-http-bridge.js"],
-      "cwd": "/path/to/ico-mcp-service",
-      "env": {
-        "MCP_HTTP_SERVER_URL": "http://localhost:3001"
-      }
-    }
-  }
-}
-```
-
-**HTTP Bridge Environment Variables:**
-- `MCP_HTTP_SERVER_URL` - HTTP server URL (default: http://localhost:3001)
-- `MCP_RECONNECT_DELAY` - Retry delay in ms (default: 2000)
-- `MCP_MAX_RETRY_ATTEMPTS` - Max retry attempts (default: 3)
-
-### Usage with HTTP Bridge
-
-1. **Start the HTTP MCP Server:**
-   ```bash
-   npm run start:mcp-http
-   ```
-
-2. **Configure your MCP client** to use the HTTP bridge (see Option 2 above)
-
-3. **The bridge will automatically:**
-   - Convert stdio MCP messages to HTTP requests
-   - Handle retries with exponential backoff
-   - Provide full compatibility with MCP clients
-   - Support all ICO registration tools
-
-### Available MCP Tools
-
-1. **search_ico_registrations** - Search with multiple criteria
-2. **get_ico_registration** - Get specific registration by number
-3. **get_registrations_by_organisation** - Search by organization name
-4. **get_registrations_by_postcode** - Search by postcode
-5. **get_data_version** - Get current data statistics
-6. **get_all_data_versions** - Get version history
-
-## Test MCP Server by mcp-inspector
-
-### Test stdio mode
-```bash
-mcp-inspector node ./dist/mcp/simple-stdio-server.js
-```
-### Test http bridge mode
-
-```bash
-npm run build
-npm run start:mcp-http
-mcp-inspector node simple-http-bridge.js
-```
-
-## Deployment Modes
-
-### 1. REST API Server
-Traditional HTTP REST API for programmatic access:
-```bash
-npm run start:api
-# Available at http://localhost:3000
-```
-
-### 2. Stdio MCP Server
-Direct MCP integration for maximum performance:
-```bash
-npm run start:mcp-stdio
-# Use with MCP clients via stdio protocol
-```
-
-### 3. HTTP MCP Server
-HTTP-based MCP server for network access:
-```bash
-npm run start:mcp-http
-# Available at http://localhost:3001
-# Endpoints: POST /initialize, POST /tools/list, POST /tools/call
-```
-
-### 4. HTTP Bridge
-Connects MCP clients to HTTP MCP server via stdio:
-```bash
-# Terminal 1: Start HTTP MCP server
-npm run start:mcp-http
-
-# Terminal 2: Use bridge for MCP client
-npm run start:http-bridge
-```
-
-**When to use each mode:**
-- **REST API**: Integration with web applications, direct HTTP access
-- **Stdio MCP**: Best performance for AI tools, direct MCP client integration
-- **HTTP MCP**: Network-accessible MCP server, microservices architecture
-- **HTTP Bridge**: Legacy MCP clients that need HTTP backend, development/testing
-
 ## Docker Deployment
 
 ### Quick Start with Docker
 
-1. **Setup Environment:**
-   ```bash
-   # Copy environment template
-   cp .env.example .env
-   
-   # Edit configuration as needed
-   nano .env
-   ```
-
-2. **Build and Setup Database:**
-   ```bash
-   # Build Docker image
-   docker build -t ico-mcp-server .
-   
-   # Setup database from CSV
-   docker-compose --profile setup up ico-setup
-   ```
-
-3. **Deploy Services:**
-   ```bash
-   # HTTP MCP Server (port 3001)
-   docker-compose --profile http up -d ico-mcp-http
-   
-   # REST API Server (port 3000)
-   docker-compose --profile api up -d ico-api
-   
-   # HTTP Bridge (connects to HTTP MCP server)
-   docker-compose --profile bridge up -d ico-bridge
-   
-   # Stdio MCP Server (default)
-   docker-compose up -d ico-mcp-stdio
-   ```
-
-### Management Scripts
-
-Use the provided control script for easy management:
-
 ```bash
-# Start HTTP MCP server
-./mcp-http-control.sh start
+# Build image
+docker build -t ico-api .
 
-# Check status
-./mcp-http-control.sh status
+# Run with docker-compose
+docker-compose up -d
 
-# View logs
-./mcp-http-control.sh logs
-
-# Stop server
-./mcp-http-control.sh stop
+# Initial database setup
+docker-compose --profile setup up ico-setup
 ```
 
-### Docker Services
+### Docker Configuration
 
-| Service | Description | Port | Profile |
-|---------|-------------|------|---------|
-| `ico-mcp-stdio` | Stdio MCP server | - | default |
-| `ico-mcp-http` | HTTP MCP server | 3001 | http |
-| `ico-api` | REST API server | 3000 | api |
-| `ico-bridge` | HTTP bridge | - | bridge |
-| `ico-setup` | Database setup | - | setup |
+The container includes:
+- REST API server on port 3000
+- Automated daily data updates (2 AM via cron)
+- Health checks every 30 seconds
+- Persistent data and logs via volumes
 
 ### Environment Variables
 
-Configure via `.env` file:
-
 ```bash
-# Server ports
-MCP_HTTP_PORT=3001
-API_PORT=3000
-
-# Logging
-LOG_LEVEL=info
-
-# Database
-DB_PATH=/app/data/ico.db
-
-# HTTP Bridge
-MCP_HTTP_SERVER_URL=http://ico-mcp-http:3001
-MCP_RECONNECT_DELAY=2000
-MCP_MAX_RETRY_ATTEMPTS=3
+PORT=3000                    # API server port
+NODE_ENV=production          # Environment mode
+DB_PATH=/app/data/ico.db    # Database path
+LOG_LEVEL=info              # Logging level
 ```
 
-### Testing Docker Deployment
+### Docker Compose Services
 
-Run the comprehensive test suite:
+- `ico-api` - Main API server with automated updates
+- `ico-setup` - One-time database setup utility
+
+## Data Management
+
+### Automated Updates
+
+The Docker container includes a cron job that runs daily at 2 AM:
+1. Downloads latest ICO data from website
+2. Imports data into SQLite database (full replacement)
+3. Logs results to `/app/logs/cron.log`
+
+### Manual Updates
 
 ```bash
-# Test all deployment modes
-./test-docker.sh
+# Download latest data
+npm run download-data
+
+# Import into database (fast method)
+npm run setup-db-fast
+
+# Full update cycle
+npm run cron-update
 ```
+
+### Data Update Strategy
+
+**Full Replacement Approach:**
+- Downloads complete dataset daily (~500MB CSV)
+- Imports 1.3M+ records in ~2 minutes
+- Uses `INSERT OR REPLACE` for data consistency
+- Tracks versions with SHA256 hashing
+- Simple, reliable, no sync issues
 
 ## Project Structure
 
 ```
-ico-mcp-service/
+ico-api-service/
 ├── src/
 │   ├── api/
 │   │   ├── routes/
 │   │   │   └── ico.ts           # REST API routes
 │   │   └── server.ts            # Express server
-│   ├── mcp/
-│   │   ├── http-server.ts       # HTTP MCP server
-│   │   ├── simple-stdio-server.ts # Stdio MCP server
-│   │   └── tools.ts             # MCP tool definitions
 │   ├── services/
 │   │   ├── database.ts          # Database operations
 │   │   └── ico-service.ts       # Business logic
@@ -339,23 +202,16 @@ ico-mcp-service/
 │   │   └── ico.ts               # TypeScript interfaces
 │   ├── utils/
 │   │   └── logger.ts            # Logging utility
-│   └── index.ts                 # Main entry point
+│   └── scripts/
+│       └── setup-db-fast.ts     # Fast CSV import
 ├── scripts/
-│   ├── download-data.ts         # ICO data download script (legacy)
-│   ├── cron-update.ts           # Automated update script
-│   └── setup-db.ts              # Database setup script
-├── download-ico-data.sh         # Shell script for downloading ICO data (recommended)
+│   └── cron-update.ts           # Automated update script
+├── download-ico-data.sh         # Data download script
 ├── data/
 │   └── ico.db                   # SQLite database
 ├── logs/                        # Application logs
-├── simple-http-bridge.js        # HTTP bridge for MCP clients
 ├── Dockerfile                   # Docker container definition
-├── docker-compose.yml           # Docker services configuration
-├── mcp-http-control.sh          # HTTP server control script
-├── test-docker.sh               # Docker deployment test script
-├── .env.example                 # Environment variables template
-├── package.json
-├── tsconfig.json
+├── docker-compose.yml           # Docker services
 └── README.md
 ```
 
@@ -394,210 +250,78 @@ CREATE TABLE data_versions (
 
 ```bash
 npm run build          # Compile TypeScript
-npm run dev:api        # Development API server
-npm run dev:mcp-http   # Development HTTP MCP server
-npm run dev:mcp-stdio  # Development stdio MCP server
-npm run start:http-bridge # HTTP bridge for MCP clients
-npm run download-data  # Download latest ICO data from ICO website (shell script)
-npm run setup-db       # Import CSV data (standard method)
-npm run setup-db-fast  # Import CSV data (optimized method - 10x faster)
-npm run cron-update    # Automated update (download + build + setup)
-npm run test           # Run tests
+npm run dev            # Development server
+npm start              # Production server
+npm run download-data  # Download latest ICO data
+npm run setup-db-fast  # Fast database import
+npm run cron-update    # Full update cycle
+npm test               # Run tests
 npm run lint           # Lint code
 npm run clean          # Clean build directory
 ```
 
-### Development Mode
+### Code Style
 
-```bash
-# Start API server in development
-npm run dev:api
-
-# Start MCP servers in development
-npm run dev:mcp-http
-npm run dev:mcp-stdio
-```
-
-## Configuration
-
-### Environment Variables
-
-**General:**
-- `NODE_ENV` - Environment (development/production)
-- `PORT` - Server port (default: 3000 for API, 3001 for MCP HTTP)
-- `DB_PATH` - Database file path (default: ./data/ico.db)
-- `LOG_LEVEL` - Logging level (default: info)
-
-**HTTP Bridge:**
-- `MCP_HTTP_SERVER_URL` - HTTP server URL (default: http://localhost:3001)
-- `MCP_RECONNECT_DELAY` - Retry delay in ms (default: 2000)
-- `MCP_MAX_RETRY_ATTEMPTS` - Max retry attempts (default: 3)
-
-### Logging
-
-Logs are written to:
-- `logs/combined.log` - All logs
-- `logs/error.log` - Error logs only
-- Console output in development mode
-
-## Data Management
-
-### Updating Data
-
-#### Manual Update
-1. Place new CSV file in project root as `register-of-data-controllers.csv`
-2. Run `npm run setup-db-fast` to import new data (recommended for speed)
-3. The system will automatically version the data updates
-
-**Import Options:**
-- `npm run setup-db-fast` - **Recommended**: 10x faster (~2 minutes for 1.29M records)
-- `npm run setup-db` - Standard method (~20+ minutes for 1.29M records)
-
-#### Automated Update
-```bash
-# Download latest data from ICO website (checks recent days automatically)
-npm run download-data
-
-# Download and force update even if file is recent
-./download-ico-data.sh --force
-
-# Full automated update (download + build + import)
-npm run cron-update
-
-# See what would be done without executing
-npm run cron-update -- --dry-run
-```
-
-**Note:** The ICO now publishes daily ZIP files instead of a single CSV. The download script (`download-ico-data.sh`) automatically:
-- Checks for the most recent available file (up to 7 days back)
-- Downloads the ZIP file and extracts the CSV (handles directory structures)
-- Verifies the file format and size
-- Cleans up temporary files
-- Works on both macOS and Linux (including Amazon Linux 2023)
-
-#### Scheduled Updates
-For regular updates, set up a cron job:
-```bash
-# Daily at 2 AM
-0 2 * * * cd /path/to/ico-mcp && npm run cron-update >> logs/cron.log 2>&1
-
-# Weekly on Sundays at 1 AM  
-0 1 * * 0 cd /path/to/ico-mcp && npm run cron-update >> logs/cron.log 2>&1
-```
-
-### Data Format
-
-The service expects CSV data with the following columns:
-- Registration_number
-- Organisation_name
-- Organisation_address_line_1
-- Organisation_postcode
-- Public_authority
-- Start_date_of_registration
-- End_date_of_registration
-- Payment_tier
-- ... and additional DPO fields
-
-## Health Monitoring
-
-### Health Check Endpoint
-
-```bash
-GET /health
-```
-
-Response:
-```json
-{
-  "status": "ok",
-  "timestamp": "2025-07-14T22:30:00.000Z"
-}
-```
-
-## Error Handling
-
-The service provides comprehensive error handling with:
-- Structured error responses
-- Detailed logging
-- Graceful degradation
-- Input validation
-
-Example error response:
-```json
-{
-  "success": false,
-  "error": "Registration not found"
-}
-```
+- TypeScript with strict mode
+- CommonJS modules
+- Express.js for REST API
+- Winston for logging
+- SQLite for data storage
+- Parameterized queries for security
 
 ## Performance
 
-### Database Optimization
-- Indexed columns for fast searches
-- SQLite for efficient local queries
-- **Optimized batch processing** for data imports (10x faster than original)
-- WAL mode for better concurrent performance
-- Memory-mapped I/O for faster file operations
+- **Database**: 396MB SQLite with 1.3M+ records
+- **Import Speed**: ~2 minutes for full dataset (10,600 records/second)
+- **Query Performance**: Indexed searches on name, postcode, registration number
+- **API Response**: Sub-second for most queries with pagination
 
-### Import Performance
-- **Fast Import**: 1.29M+ records in ~2 minutes (10,600 records/second)
-- Standard Import: 1.29M+ records in ~20+ minutes (1,100 records/second)
-- **Batch transactions** with 1000-record batches for optimal performance
-- **Custom CSV parser** optimized for ICO data format
-- **Memory-efficient** processing without loading entire file into memory
+## Security
 
-### Query Performance
-- Organization name: Partial match with LIKE
-- Registration number: Exact match (primary key)
-- Postcode: Partial match with LIKE
-- Pagination support with LIMIT/OFFSET
-
-## Security Considerations
-
+- Parameterized SQL queries prevent injection
 - Input validation and sanitization
-- SQL injection protection via parameterized queries
-- No sensitive data exposure in logs
+- No sensitive data in logs
 - CORS support for web applications
+- Non-root user in Docker container
+
+## Monitoring
+
+### Health Check
+```bash
+curl http://localhost:3000/health
+```
+
+### Logs
+- `logs/combined.log` - All logs
+- `logs/error.log` - Error logs only
+- `logs/cron.log` - Automated update logs (Docker)
 
 ## Troubleshooting
 
-### Common Issues
-
-1. **Database not found**
-   ```bash
-   npm run setup-db
-   ```
-
-2. **Port already in use**
-   ```bash
-   export PORT=3002
-   npm run start:api
-   ```
-
-3. **CSV import fails**
-   - Ensure CSV file is in project root
-   - Check file format and encoding
-   - Review logs for specific errors
-
-### Debug Mode
-
-Enable debug logging:
+### Database not found
 ```bash
-export LOG_LEVEL=debug
-npm run start:api
+npm run setup-db-fast
 ```
 
-## Contributing
+### Port already in use
+```bash
+export PORT=3002
+npm start
+```
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+### CSV import fails
+- Ensure CSV file is in project root
+- Check file format and encoding
+- Review logs for specific errors
+
+### Docker container not updating
+- Check cron logs: `docker exec ico-api cat /app/logs/cron.log`
+- Verify download script permissions
+- Check disk space for data directory
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License.
 
 ## Support
 
@@ -606,85 +330,13 @@ For issues and questions:
 - Review application logs
 - Create an issue in the repository
 
-## Technical Summary
-
-### ✅ **Complete Implementation**
-- **1.29M+ ICO Registration Records** processed from 250MB CSV file into 415MB SQLite database
-- **4 Deployment Modes**: REST API, Stdio MCP, HTTP MCP, and HTTP Bridge
-- **6 ICO Search Tools**: search_ico_registrations, get_ico_registration, get_registrations_by_organisation, get_registrations_by_postcode, get_data_version, get_all_data_versions
-- **Full TypeScript Implementation** with comprehensive type definitions and error handling
-
-### ✅ **MCP Client Compatibility**
-- **LM Studio**: ✅ Complete stderr silence - no initialization hanging
-- **Claude Desktop**: ✅ Fixed all JSON-RPC 2.0 compliance issues
-- **Any MCP Client**: ✅ Proper notification handling, resources/list, prompts/list support
-- **HTTP Bridge**: ✅ Converts stdio MCP messages to HTTP requests with retry logic
-
-### ✅ **Key Technical Features**
-- **Silent stdio operation** (no stderr contamination for MCP clients)
-- **Absolute path resolution** (working directory independence)
-- **JSON-RPC 2.0 compliant** responses with required fields
-- **Comprehensive logging** to files with configurable levels
-- **Retry logic** with exponential backoff for HTTP bridge
-- **Real-time search** of UK ICO data controller registry
-
-### ✅ **Production Ready**
-- **Database Performance**: Indexed columns, batch processing, pagination support
-- **Error Handling**: Structured responses, input validation, graceful degradation
-- **Security**: SQL injection protection, input sanitization, no sensitive data exposure
-- **Monitoring**: Health checks, comprehensive logging, performance metrics
-- **Scalability**: Multiple deployment options, configurable connection limits
-
-### ✅ **Testing Verified**
-- **Claude Desktop simulation**: ✅ All expected responses, perfect compatibility
-- **HTTP Bridge functionality**: ✅ Successful conversion of stdio to HTTP requests
-- **Real data searches**: ✅ Successfully searches NHS organizations and other entities
-- **No stderr output**: ✅ Perfect compatibility with MCP clients
-- **Database integrity**: ✅ 1.29M+ records imported and searchable
-
-The service is **production-ready** and can be deployed in any of the four modes depending on your integration needs. All MCP client compatibility issues have been resolved, and the system has been thoroughly tested with real data.
-
 ## Changelog
 
-### v1.0.4
-- **Major Performance Improvement**: Added optimized database import script (`setup-db-fast.js`)
-- **10x Faster Import**: Reduced import time from 20+ minutes to ~2 minutes (10,600 records/second)
-- **Batch Processing**: Implemented 1000-record batch transactions for optimal performance
-- **Custom CSV Parser**: Optimized parser for ICO data format without external dependencies
-- **Memory Efficiency**: Processes CSV without loading entire file into memory
-- **SQLite Optimizations**: WAL mode, memory-mapped I/O, and performance tuning
-- **Fresh Database Support**: Fixed database creation for clean imports
-- Added `npm run setup-db-fast` command for optimized imports
-
-### v1.0.3
-- Added download-data.ts script for automated ICO data downloads
-- Added cron-update.ts script for scheduled data updates
-- **Fixed download script for new ICO ZIP format** - ICO now publishes daily ZIP files
-- Automated data management with lock file protection
-- Support for cron job scheduling and dry-run mode
-- Enhanced data management documentation
-
-### v1.0.2
-- Added comprehensive Docker support for all deployment modes
-- Docker services: stdio, http, api, bridge, and setup
-- Added mcp-http-control.sh for easy HTTP server management
-- Added test-docker.sh for deployment testing
-- Multi-stage Docker build for production optimization
-- Environment-based configuration support
-
-### v1.0.1
-- Simplified HTTP MCP endpoints (removed `/mcp` prefix)
-- HTTP endpoints now: `/initialize`, `/tools/list`, `/tools/call`
-- Updated HTTP bridge to use simplified endpoints
-- Updated documentation
-
-### v1.0.0
-- Initial release
-- REST API implementation
-- MCP protocol support (stdio and HTTP)
-- HTTP Bridge implementation
-- Database management with 1.29M+ records
-- CSV data import and versioning
-- Comprehensive search capabilities
-- Full MCP client compatibility (LM Studio, Claude Desktop, etc.)
-- Production-ready deployment options
+### v2.0.0
+- **Major Simplification**: Removed MCP protocol support
+- **REST API Only**: Focused on clean REST endpoints
+- **Automated Updates**: Built-in cron scheduling in Docker
+- **Full Replacement Strategy**: Simple, reliable data updates
+- **Improved Performance**: Optimized for 1.3M+ records
+- **Simplified Deployment**: Single Docker container
+- **Removed Dependencies**: Cleaned up unused packages
